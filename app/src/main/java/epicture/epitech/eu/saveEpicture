@@ -1,0 +1,74 @@
+package epicture.epitech.eu
+
+import android.app.Activity
+import android.arch.lifecycle.Transformations.map
+import android.content.Context
+import android.content.Intent
+import android.util.Log
+import android.support.v7.app.AppCompatActivity
+import android.os.Bundle
+import android.support.v4.app.Fragment
+import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.Button
+import kotlinx.android.synthetic.main.login_epicture.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import com.google.gson.*
+import okhttp3.Response
+import ca.mimic.oauth2library.OAuth2Client
+import ca.mimic.oauth2library.OAuthResponse
+import ca.mimic.oauth2library.OAuthResponseCallback
+import android.support.v4.content.ContextCompat.startActivity
+
+data class Auth (
+    val access_token: String = "",
+    val refresh_token: String = "",
+    val account_id: String = "",
+    val account_username: String = ""
+)
+
+class Epicture : AppCompatActivity() {
+
+    var httpClient: OkHttpClient = OkHttpClient.Builder().build()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.login_epicture)
+        val login = findViewById(R.id.LoginButton) as Button
+
+        login.setOnClickListener(object : View.OnClickListener {
+            override fun onClick(v: View) {
+                checkLogin(LoginField.text.toString(), PasswdField.text.toString())
+            }
+        })
+    }
+
+    fun checkLogin(login: String, passwd: String) {
+        val client = OAuth2Client.Builder(
+            login,
+            passwd,
+            "eb6bb0b2233a4b6",
+            "6f5f34a5c9aba37a4891f809588b631df2a1d0c5",
+            "https://api.imgur.com/oauth2/token").build()
+            client.requestAccessToken {response ->
+            if (response.isSuccessful) {
+                Log.d("Debug", "authentication successful")
+                Log.d("debug", response.body)
+                val Auth = Gson().fromJson(response.body, Auth::class.java)
+                val myIntent = Intent(this@Epicture, Home::class.java)
+                myIntent.putExtra("accessToken", Auth.access_token)
+                myIntent.putExtra("refreshToken", Auth.refresh_token)
+                myIntent.putExtra("id", Auth.account_id)
+                myIntent.putExtra("username", Auth.account_username)
+                this@Epicture.startActivity(myIntent)
+                setContentView(R.layout.home_epicture)
+            } else {
+                if (response.code == 403) {
+                    Log.d("Error", "authentication failed")
+                    LoginErrorMsg.visibility = View.VISIBLE
+                }
+            }
+        }
+    }
+}
